@@ -20,10 +20,13 @@ cd IsEM-Pro
 <h2>Usage</h2>
 Training:
 First, train VAE model:
+
 ```ruby
 bash train_vae_mrf.sh data_path outout_path
 ```
+
 Then train the latent generative model using MCEM:
+
 ```ruby
 bash train_is_vae.sh data_path outout_path first_stage_path
 ```
