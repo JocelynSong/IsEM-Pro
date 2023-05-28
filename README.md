@@ -1,8 +1,8 @@
 <h1>IsEM-Pro</h1>
 
 
-<h2>Installation</h2></br>
-The dependencies can be set up using the following commands:</br>
+<h2>Installation</h2>
+The dependencies can be set up using the following commands:
 ```ruby
 conda create -n isem-pro python=3.8 -y </br>
 conda activate isem-pro </br>
