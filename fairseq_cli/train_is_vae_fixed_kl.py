@@ -346,13 +346,13 @@ def main(cfg: FairseqConfig) -> None:
         )
 
         # using annealed KL
-        # if training_epoch <= 3:
-        #     annealed_kl = 0.0
-        # else:
-        #     annealed_kl = cfg.criterion.final_kl * (float(training_epoch - 3) / (max_epoch - 3))
+        if training_epoch <= 3:
+            annealed_kl = 0.0
+        else:
+            annealed_kl = cfg.criterion.final_kl * (float(training_epoch - 3) / (max_epoch - 3))
         # annealed_kl = 0.5 * (float(training_epoch) / max_epoch) + 0.5
         # annealed_kl = (1.0 - cfg.criterion.final_kl) * (float(training_epoch) / max_epoch) + cfg.criterion.final_kl
-        # criterion.kl_factor = annealed_kl
+        criterion.kl_factor = annealed_kl
 
         valid_losses, should_stop = train(cfg, trainer, task, epoch_itr)
         if should_stop:
