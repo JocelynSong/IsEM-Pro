@@ -4,10 +4,10 @@
 <h2>Installation</h2>
 The dependencies can be set up using the following commands:
 ```ruby
-conda create -n isem-pro python=3.8 -y </br>
-conda activate isem-pro </br>
-conda install pytorch=1.10.2 cudatoolkit=11.3 -c pytorch -y </br>
-conda install numpy=1.19 pandas=1.3 -y </br>
+conda create -n isem-pro python=3.8 -y 
+conda activate isem-pro 
+conda install pytorch=1.10.2 cudatoolkit=11.3 -c pytorch -y 
+conda install numpy=1.19 pandas=1.3 -y 
 ```
 
 Clone this repository by the following commands:
