@@ -47,4 +47,4 @@ The sample number (--max-iteration-sample) is 10% of the original training data 
 bash generate_vae.sh data_path avGFP outout_path generation_path
 ```
 
-generation_path/protein_task.txt is the final output file
+generation_path/protein.txt is the final output file
