@@ -1,14 +1,15 @@
 #!/bin/bash
 
 data_path=$1
-output_path=$2
-generation_path=$3
+protein=$2
+output_path=$3
+generation_path=$4
 mkdir -p ${generation_path}
 
 python3 fairseq_cli/generate_vae.py ${data_path} \
 --arch transformer_vae_esm \
 --task vae_protein_design \
---protein-task "Pab1" \
+--protein-task ${protein} \
 --dataset-impl "raw" \
 --path ${output_path}/checkpoint_best.pt \
 --batch-size 128 \

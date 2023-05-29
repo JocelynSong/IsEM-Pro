@@ -1,11 +1,12 @@
 #!/bin/bash
 
 data_path=$1
-single_energy_path=${data_path}/single.lasso.pt
-pair_energy_path=${data_path}/pair.lasso.pt
+protein=$2
+single_energy_path=${protein}/single.lasso.pt
+pair_energy_path=${protein}/pair.lasso.pt
 
-output_path=$2
-first_stage_path=$3
+output_path=$3
+first_stage_path=$4
 pretrained_model="esm2_t6_8M_UR50D"
 first_stage_model=${first_stage_path}/checkpoint_best.pt
 rm -rf ${output_path}
@@ -16,7 +17,7 @@ python3 fairseq_cli/train_is_vae.py ${data_path} \
 --save-dir ${output_path} \
 --restore-file ${first_stage_model} \
 --task is_vae_protein_design \
---protein-task "Pab1" \
+--protein-task ${protein} \
 --dataset-impl "raw" \
 --max-iteration-sample 3600 \
 --criterion importance_sampling_criterion --label-smoothing 0.1 --kl-factor 0.8 --final-kl 0.8 \

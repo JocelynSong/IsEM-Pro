@@ -1,17 +1,17 @@
 #!/bin/bash
 
 data_path=$1
-single_energy_path=${data_path}/Pab1/single.lasso.pt
-pair_energy_path=${data_path}/Pab1/pair.lasso.pt
+protein=$2
+single_energy_path=${protein}/single.lasso.pt
+pair_energy_path=${protein}/pair.lasso.pt
 
 pretrained_model="esm2_t6_8M_UR50D"
-output_path=$2
-
+output_path=$3
 
 python3 fairseq_cli/train.py ${data_path} \
 --save-dir ${output_path} \
 --task vae_protein_design \
---protein-task "Pab1" \
+--protein-task ${protein} \
 --dataset-impl "raw" \
 --criterion vae_transformer_criterion --label-smoothing 0.1 --kl-factor 0.8 --final-kl 0.8 \
 --arch transformer_vae_esm \
