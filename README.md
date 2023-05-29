@@ -20,6 +20,7 @@ cd IsEM-Pro
 <h2>Usage</h2>
 <h3>Preprocess</h3>
 Training MRFs (taking avGFP as an example):
+
 ```ruby
 mkdir avGFP
 bash run_mrf.sh avGFP
@@ -41,7 +42,9 @@ The sample number (--max-iteration-sample) is 10% of the original training data 
 
 
 <h3>Inference</h3>
+
 ```ruby
 bash generate_vae.sh data_path avGFP outout_path generation_path
 ```
+
 generation_path/protein_task.txt is the final output file
