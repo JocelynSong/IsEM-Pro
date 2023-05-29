@@ -695,12 +695,6 @@ class Sampling(Search):
             # only sample from top-k candidates
             lprobs[:, :, 3] = -math.inf
             lprobs, top_indices = lprobs.topk(self.sampling_topk)
-            # if step == 341:
-            #     lprobs, top_indices = lprobs.topk(self.sampling_topk)
-            # else:
-            #     lprobs, top_indices = lprobs.topk(self.sampling_topk+1)
-            #     lprobs = lprobs[:, :, 1: ]
-            #     top_indices = top_indices[:, :, 1: ]
             probs = lprobs.exp_()
         else:
             probs = lprobs.exp_()

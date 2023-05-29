@@ -384,7 +384,6 @@ class SequenceGenerator(nn.Module):
             # handle max length constraint
             if step >= max_len:
                 lprobs[:, : self.eos] = -math.inf
-                lprobs[:, self.eos + 1 :] = -math.inf
 
             # Record attention scores, only support avg_attn_scores is a Tensor
             if avg_attn_scores is not None:
