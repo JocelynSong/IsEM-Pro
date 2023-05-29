@@ -18,15 +18,14 @@ cd IsEM-Pro
 ```
 
 <h2>Usage</h2>
-Preprocess:</br>
-Training MRFs:</br>
-taking avGFP as an example
+<h3>Preprocess</h3>:
+Training MRFs (taking avGFP as an example):
 ```ruby
 mkdir avGFP
 bash run_mrf.sh avGFP
 ```
 
-Training:
+<h3>Training</h3>:
 First, train VAE model:
 
 ```ruby
@@ -41,7 +40,7 @@ bash train_is_vae.sh data_path avGFP outout_path first_stage_path
 The sample number (--max-iteration-sample) is 10% of the original training data size.
 
 
-Inference:
+<h3>Inference</h3>:
 ```ruby
 bash generate_vae.sh data_path avGFP outout_path generation_path
 ```
