@@ -238,10 +238,7 @@ class TransformerVAEDecoder(TransformerDecoder):
 
         # embed tokens and positions
         x = self.embed_tokens(prev_output_tokens)
-        # latent = latent_vectors.unsqueeze(1).repeat(1, x.size()[1], 1)  # [batch, length, latent]
-        #
-        # x = torch.cat((x, latent), 2)  # [batch, length, dim]
-        # x = self.mapping_layer(x)
+
         x[:, 0] = latent_vectors
         try:
             trans_mrf_features = self.mrf_map_layer(batch_mrf_features)  # [batch, len-2, dim]
@@ -249,7 +246,6 @@ class TransformerVAEDecoder(TransformerDecoder):
             trans_mrf_features = self.mrf_map_layer(batch_mrf_features.float())  # [batch, len-2, dim]
         x[:, 1:, :] = x[:, 1:, :] + trans_mrf_features
         x = self.embed_scale * x
-        # x = self.embed_scale * self.embed_tokens(prev_output_tokens)
 
         if self.quant_noise is not None:
             x = self.quant_noise(x)
@@ -378,7 +374,6 @@ class TransformerVAEDecoder(TransformerDecoder):
 
         # get mrf features
         if slen > 1 and slen < self.args.max_length+1:
-        #  if slen > 1 and slen < 29:
             device = torch.device("cuda")
             mrf_ids = torch.tensor(np.array([[slen-1]])).repeat(bs, 1).to(device) * 20
             mrf_ids = mrf_ids + (prev_output_tokens - 4)
@@ -386,294 +381,15 @@ class TransformerVAEDecoder(TransformerDecoder):
 
         # embed tokens and positions
         x = self.embed_tokens(prev_output_tokens)
-        # latent = latent_vectors.unsqueeze(1).repeat(1, x.size()[1], 1)  # [batch, length, latent]
-        #
-        # x = torch.cat((x, latent), 2)  # [batch, length, dim]
-        # x = self.mapping_layer(x)
+
         if slen == 1:
             x[:, 0, :] = latent_vectors
         if slen > 1 and slen < self.args.max_length + 1:
-        # if slen > 1 and slen < 29:
             try:
                 trans_mrf_features = self.mrf_map_layer(batch_mrf_features)  # [batch, len-2, dim]
             except:
                 trans_mrf_features = self.mrf_map_layer(batch_mrf_features.float())
             x = x + trans_mrf_features
-        x = self.embed_scale * x
-        # x = self.embed_scale * self.embed_tokens(prev_output_tokens)
-
-        if self.quant_noise is not None:
-            x = self.quant_noise(x)
-
-        if self.project_in_dim is not None:
-            x = self.project_in_dim(x)
-
-        if positions is not None:
-            x += positions
-
-        if self.layernorm_embedding is not None:
-            x = self.layernorm_embedding(x)
-
-        x = self.dropout_module(x)
-
-        # B x T x C -> T x B x C
-        x = x.transpose(0, 1)
-
-        self_attn_padding_mask: Optional[Tensor] = None
-        if self.cross_self_attention or prev_output_tokens.eq(self.padding_idx).any():
-            self_attn_padding_mask = prev_output_tokens.eq(self.padding_idx)
-
-        # decoder layers
-        attn: Optional[Tensor] = None
-        inner_states: List[Optional[Tensor]] = [x]
-        for idx, layer in enumerate(self.layers):
-            if incremental_state is None and not full_context_alignment:
-                self_attn_mask = self.buffered_future_mask(x)
-            else:
-                self_attn_mask = None
-
-            x, layer_attn, _ = layer(
-                x,
-                enc,
-                padding_mask,
-                incremental_state,
-                self_attn_mask=self_attn_mask,
-                self_attn_padding_mask=self_attn_padding_mask,
-                need_attn=bool((idx == alignment_layer)),
-                need_head_weights=bool((idx == alignment_layer)),
-            )
-            inner_states.append(x)
-            if layer_attn is not None and idx == alignment_layer:
-                attn = layer_attn.float().to(x)
-
-        if attn is not None:
-            if alignment_heads is not None:
-                attn = attn[:alignment_heads]
-
-            # average probabilities over heads
-            attn = attn.mean(dim=0)
-
-        if self.layer_norm is not None:
-            x = self.layer_norm(x)
-
-        # T x B x C -> B x T x C
-        x = x.transpose(0, 1)
-
-        if self.project_out_dim is not None:
-            x = self.project_out_dim(x)
-
-        extra = {"attn": [attn], "inner_states": inner_states}
-
-        if not features_only:
-            x = self.output_layer(x)
-        return x, extra
-
-
-class TransformerVAENoMRFDecoder(TransformerDecoder):
-    def __init__(self, args, dictionary, embed_tokens, no_encoder_attn=False, output_projection=None):
-        self.args = args
-        super().__init__(
-            args,
-            dictionary,
-            embed_tokens,
-            no_encoder_attn=no_encoder_attn,
-            output_projection=output_projection,
-        )
-
-    def forward(
-        self,
-        prev_output_tokens,
-        encoder_out: Optional[Dict[str, List[Tensor]]] = None,
-        incremental_state: Optional[Dict[str, Dict[str, Optional[Tensor]]]] = None,
-        features_only: bool = False,
-        full_context_alignment: bool = False,
-        alignment_layer: Optional[int] = None,
-        alignment_heads: Optional[int] = None,
-        src_lengths: Optional[Any] = None,
-        return_all_hiddens: bool = False,
-        latent_vectors = None
-    ):
-        """
-        Args:
-            prev_output_tokens (LongTensor): previous decoder outputs of shape
-                `(batch, tgt_len)`, for teacher forcing
-            encoder_out (optional): output from the encoder, used for
-                encoder-side attention, should be of size T x B x C
-            incremental_state (dict): dictionary used for storing state during
-                :ref:`Incremental decoding`
-            features_only (bool, optional): only return features without
-                applying output layer (default: False).
-            full_context_alignment (bool, optional): don't apply
-                auto-regressive mask to self-attention (default: False).
-            latent_vectors: [length, batch, dim]
-
-        Returns:
-            tuple:
-                - the decoder's output of shape `(batch, tgt_len, vocab)`
-                - a dictionary with any model-specific outputs
-        """
-        bs, slen = prev_output_tokens.size()
-
-        if alignment_layer is None:
-            alignment_layer = self.num_layers - 1
-
-        enc: Optional[Tensor] = None
-        padding_mask: Optional[Tensor] = None
-        if encoder_out is not None and len(encoder_out["encoder_out"]) > 0:
-            enc = encoder_out["encoder_out"][0]
-            assert (
-                    enc.size()[1] == bs
-            ), f"Expected enc.shape == (t, {bs}, c) got {enc.shape}"
-        if encoder_out is not None and len(encoder_out["encoder_padding_mask"]) > 0:
-            padding_mask = encoder_out["encoder_padding_mask"][0]
-
-        # embed positions
-        positions = None
-        if self.embed_positions is not None:
-            positions = self.embed_positions(
-                prev_output_tokens, incremental_state=incremental_state
-            )
-
-        if incremental_state is not None:
-            prev_output_tokens = prev_output_tokens[:, -1:]
-            if positions is not None:
-                positions = positions[:, -1:]
-
-        # embed tokens and positions
-        x = self.embed_tokens(prev_output_tokens)
-        x[:, 0] = latent_vectors
-        x = self.embed_scale * x
-        # x = self.embed_scale * self.embed_tokens(prev_output_tokens)
-
-        if self.quant_noise is not None:
-            x = self.quant_noise(x)
-
-        if self.project_in_dim is not None:
-            x = self.project_in_dim(x)
-
-        if positions is not None:
-            x += positions
-
-        if self.layernorm_embedding is not None:
-            x = self.layernorm_embedding(x)
-
-        x = self.dropout_module(x)
-
-        # B x T x C -> T x B x C
-        x = x.transpose(0, 1)
-
-        self_attn_padding_mask: Optional[Tensor] = None
-        if self.cross_self_attention or prev_output_tokens.eq(self.padding_idx).any():
-            self_attn_padding_mask = prev_output_tokens.eq(self.padding_idx)
-
-        # decoder layers
-        attn: Optional[Tensor] = None
-        inner_states: List[Optional[Tensor]] = [x]
-        for idx, layer in enumerate(self.layers):
-            if incremental_state is None and not full_context_alignment:
-                self_attn_mask = self.buffered_future_mask(x)
-            else:
-                self_attn_mask = None
-
-            x, layer_attn, _ = layer(
-                x,
-                enc,
-                padding_mask,
-                incremental_state,
-                self_attn_mask=self_attn_mask,
-                self_attn_padding_mask=self_attn_padding_mask,
-                need_attn=bool((idx == alignment_layer)),
-                need_head_weights=bool((idx == alignment_layer)),
-            )
-            inner_states.append(x)
-            if layer_attn is not None and idx == alignment_layer:
-                attn = layer_attn.float().to(x)
-
-        if attn is not None:
-            if alignment_heads is not None:
-                attn = attn[:alignment_heads]
-
-            # average probabilities over heads
-            attn = attn.mean(dim=0)
-
-        if self.layer_norm is not None:
-            x = self.layer_norm(x)
-
-        # T x B x C -> B x T x C
-        x = x.transpose(0, 1)
-
-        if self.project_out_dim is not None:
-            x = self.project_out_dim(x)
-
-        extra = {"attn": [attn], "inner_states": inner_states}
-
-        if not features_only:
-            x = self.output_layer(x)
-        return x, extra
-
-    def inference_forward(
-        self,
-        prev_output_tokens,
-        encoder_out: Optional[Dict[str, List[Tensor]]] = None,
-        incremental_state: Optional[Dict[str, Dict[str, Optional[Tensor]]]] = None,
-        features_only: bool = False,
-        full_context_alignment: bool = False,
-        alignment_layer: Optional[int] = None,
-        alignment_heads: Optional[int] = None,
-        src_lengths: Optional[Any] = None,
-        return_all_hiddens: bool = False,
-        latent_vectors = None
-    ):
-        """
-        Args:
-            prev_output_tokens (LongTensor): previous decoder outputs of shape
-                `(batch, tgt_len)`, for teacher forcing
-            encoder_out (optional): output from the encoder, used for
-                encoder-side attention, should be of size T x B x C
-            incremental_state (dict): dictionary used for storing state during
-                :ref:`Incremental decoding`
-            features_only (bool, optional): only return features without
-                applying output layer (default: False).
-            full_context_alignment (bool, optional): don't apply
-                auto-regressive mask to self-attention (default: False).
-            latent_vectors: [length, batch, dim]
-
-        Returns:
-            tuple:
-                - the decoder's output of shape `(batch, tgt_len, vocab)`
-                - a dictionary with any model-specific outputs
-        """
-        bs, slen = prev_output_tokens.size()
-
-        if alignment_layer is None:
-            alignment_layer = self.num_layers - 1
-
-        enc: Optional[Tensor] = None
-        padding_mask: Optional[Tensor] = None
-        if encoder_out is not None and len(encoder_out["encoder_out"]) > 0:
-            enc = encoder_out["encoder_out"][0]
-            assert (
-                    enc.size()[1] == bs
-            ), f"Expected enc.shape == (t, {bs}, c) got {enc.shape}"
-        if encoder_out is not None and len(encoder_out["encoder_padding_mask"]) > 0:
-            padding_mask = encoder_out["encoder_padding_mask"][0]
-
-        # embed positions
-        positions = None
-        if self.embed_positions is not None:
-            positions = self.embed_positions(
-                prev_output_tokens, incremental_state=incremental_state
-            )
-
-        if incremental_state is not None:
-            prev_output_tokens = prev_output_tokens[:, -1:]
-            if positions is not None:
-                positions = positions[:, -1:]
-
-        # embed tokens and positions
-        x = self.embed_tokens(prev_output_tokens)
-        if slen == 1:
-            x[:, 0, :] = latent_vectors
         x = self.embed_scale * x
 
         if self.quant_noise is not None:
@@ -801,7 +517,6 @@ class TransformerVAEModel(TransformerModel):
 
         self.mean_layer1 = nn.Linear(self.args.encoder_embed_dim, self.latent_dim)
         self.logvar_layer1 = nn.Linear(self.args.encoder_embed_dim, self.latent_dim)
-        # self.mapping_layer = nn.Linear(self.args.encoder_embed_dim + self.args.latent_dimension, self.args.latent_dimension)
         self.encoder_layers = args.encoder_layers
         self.max_length = args.max_length
 
@@ -938,21 +653,6 @@ class TransformerVAEIS(TransformerVAEModel):
         return p_model_out, decoder_out, z_mean, z_std
 
 
-@register_model("transformer_vae_wo_mrf")
-class TransformerVAENoMRFModel(TransformerVAEModel):
-    def __init__(self, args, encoder, decoder):
-        super().__init__(args, encoder, decoder)
-
-    @classmethod
-    def build_decoder(cls, args, tgt_dict, embed_tokens):
-        return TransformerVAENoMRFDecoder(
-            args,
-            tgt_dict,
-            embed_tokens,
-            no_encoder_attn=args.no_cross_attention,
-        )
-
-
 @register_model_architecture("transformer_vae", "transformer_vae")
 def base_architecture(args):
     transformer_base_architecture(args)
@@ -1009,16 +709,4 @@ def transformer_vae_is_esm(args):
     args.decoder_layers = getattr(args, "decoder_layers", 2)
     base_architecture(args)
 
-
-@register_model_architecture("transformer_vae_wo_mrf", "transformer_vae_wo_mrf_esm")
-def transformer_vae_esm(args):
-    args.encoder_embed_dim = getattr(args, "encoder_embed_dim", 320)
-    args.encoder_ffn_embed_dim = getattr(args, "encoder_ffn_embed_dim", 1280)
-    args.encoder_attention_heads = getattr(args, "encoder_attention_heads", 8)
-    args.encoder_layers = getattr(args, "encoder_layers", 6)
-    args.decoder_embed_dim = getattr(args, "decoder_embed_dim", 320)
-    args.decoder_ffn_embed_dim = getattr(args, "decoder_ffn_embed_dim", 1280)
-    args.decoder_attention_heads = getattr(args, "decoder_attention_heads", 8)
-    args.decoder_layers = getattr(args, "decoder_layers", 2)
-    base_architecture(args)
 
