@@ -1,4 +1,4 @@
-<h1>code for paper IsEM-Pro: Importance Weighted Expectation-Maximization for Protein Sequence Design</h1>
+<h1>code for paper IsEM-Pro: <a href="https://arxiv.org/pdf/2305.00386.pdf" target="_blank">Importance Weighted Expectation-Maximization for Protein Sequence Design</a></h1>
 
 
 <h2>Installation</h2>
