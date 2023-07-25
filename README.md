@@ -1,4 +1,4 @@
-<h1>IsEM-Pro</h1>
+<h1>code for paper IsEM-Pro: Importance Weighted Expectation-Maximization for Protein Sequence Design</h1>
 
 
 <h2>Installation</h2>
